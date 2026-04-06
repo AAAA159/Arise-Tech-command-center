@@ -1,1 +1,287 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arise OS | Focal Point Edition</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Noto Sans Arabic', sans-serif; 
+            background: #020202;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        .white-room-grid {
+            background-image: 
+                linear-gradient(to right, rgba(255,255,255,0.01) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.01) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .panel-glass { 
+            background: rgba(12, 12, 12, 0.8); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .accent-red { color: #e11d48; }
+        .bg-accent-red { background-color: #e11d48; }
+        .active-tab {
+            border-bottom: 2px solid #e11d48;
+            color: white;
+            background: rgba(225, 29, 72, 0.05);
+        }
+        .custom-scroll::-webkit-scrollbar { width: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #e11d48; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="white-room-grid min-h-screen">
+    <div id="root"></div>
 
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        const Icons = {
+            Plus: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>,
+            Trash: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>,
+            Check: () => <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" strokeWidth="4" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>,
+            Filter: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 4.5h18m-15 5h12m-9 5h6m-3 5h0"/></svg>
+        };
+
+        const INITIAL_CATEGORIES = [
+            { id: 'ARISE_CORE', name: 'برمجيات Arise', color: 'blue' },
+            { id: 'AI_SHADOW', name: 'الذكاء الاصطناعي', color: 'purple' },
+            { id: 'AZHAR_SYNC', name: 'المسار الأزهري', color: 'emerald' },
+            { id: 'FITNESS', name: 'اللياقة البدنية', color: 'red' }
+        ];
+
+        function App() {
+            const [categories, setCategories] = useState(() => JSON.parse(localStorage.getItem('ayan_cats') || JSON.stringify(INITIAL_CATEGORIES)));
+            const [tasks, setTasks] = useState(() => JSON.parse(localStorage.getItem('ayan_tasks_v3') || '[]'));
+            const [activeCat, setActiveCat] = useState(categories[0]?.id || 'ARISE_CORE');
+            const [taskInput, setTaskInput] = useState('');
+            const [newCatName, setNewCatName] = useState('');
+            const [showAddCat, setShowAddCat] = useState(false);
+
+            useEffect(() => {
+                localStorage.setItem('ayan_tasks_v3', JSON.stringify(tasks));
+                localStorage.setItem('ayan_cats', JSON.stringify(categories));
+            }, [tasks, categories]);
+
+            const addTask = (e) => {
+                e.preventDefault();
+                if (!taskInput.trim()) return;
+                const newTask = {
+                    id: Date.now(),
+                    text: taskInput,
+                    categoryId: activeCat,
+                    completed: false
+                };
+                setTasks([newTask, ...tasks]);
+                setTaskInput('');
+            };
+
+            const toggleTask = (id) => {
+                setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+            };
+
+            const deleteTask = (id) => {
+                setTasks(tasks.filter(t => t.id !== id));
+            };
+
+            const addCategory = () => {
+                if (!newCatName.trim()) return;
+                const id = 'CAT_' + Date.now();
+                setCategories([...categories, { id, name: newCatName, color: 'zinc' }]);
+                setNewCatName('');
+                setShowAddCat(false);
+                setActiveCat(id);
+            };
+
+            const deleteCategory = (id) => {
+                if (categories.length <= 1) return;
+                setCategories(categories.filter(c => c.id !== id));
+                setTasks(tasks.filter(t => t.categoryId !== id));
+                setActiveCat(categories[0].id);
+            };
+
+            const filteredTasks = useMemo(() => {
+                return tasks.filter(t => t.categoryId === activeCat);
+            }, [tasks, activeCat]);
+
+            return (
+                <div className="max-w-6xl mx-auto px-4 py-8 md:py-16">
+                    
+                    {/* Header */}
+                    <header className="mb-12 border-b border-white/5 pb-8 flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div className="text-center md:text-right">
+                            <h1 className="text-4xl font-black tracking-tighter text-white mb-2 italic">ARISE <span className="text-zinc-700">EMPIRE</span></h1>
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.4em]">Strategic Control Center | Advisor: Ayanokouji</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                           <div className="bg-zinc-900/50 px-4 py-2 border border-zinc-800 rounded text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                                الحالة: <span className="text-green-500">نشط</span>
+                           </div>
+                        </div>
+                    </header>
+
+                    {/* Category Navigation */}
+                    <div className="flex flex-wrap items-center gap-2 mb-8">
+                        {categories.map(cat => (
+                            <div key={cat.id} className="relative group">
+                                <button 
+                                    onClick={() => setActiveCat(cat.id)}
+                                    className={`px-6 py-3 text-xs font-bold uppercase tracking-wider transition-all rounded-sm flex items-center gap-2 ${activeCat === cat.id ? 'active-tab shadow-lg shadow-red-950/20' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                >
+                                    {cat.name}
+                                </button>
+                                {activeCat === cat.id && categories.length > 1 && (
+                                    <button 
+                                        onClick={() => deleteCategory(cat.id)}
+                                        className="absolute -top-2 -left-2 bg-black border border-zinc-800 text-zinc-600 hover:text-red-500 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <Icons.Trash />
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                        <button 
+                            onClick={() => setShowAddCat(!showAddCat)}
+                            className="w-10 h-10 flex items-center justify-center border border-dashed border-zinc-800 text-zinc-600 hover:border-zinc-400 hover:text-zinc-400 transition-all rounded-full mr-2"
+                        >
+                            <Icons.Plus />
+                        </button>
+                    </div>
+
+                    {/* Add Category Modal/Inline */}
+                    {showAddCat && (
+                        <div className="mb-8 p-4 panel-glass border-dashed animate-fade">
+                            <div className="flex gap-2">
+                                <input 
+                                    className="flex-1 bg-black border border-zinc-800 p-3 text-xs outline-none focus:border-zinc-500"
+                                    placeholder="اسم القسم الجديد..."
+                                    value={newCatName}
+                                    onChange={e => setNewCatName(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && addCategory()}
+                                />
+                                <button onClick={addCategory} className="bg-white text-black px-4 text-xs font-bold uppercase">إضافة</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Active Section Content */}
+                    <main className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fade" key={activeCat}>
+                        
+                        {/* Task List */}
+                        <div className="lg:col-span-8 space-y-6">
+                            <div className="panel-glass p-8">
+                                <div className="flex items-center justify-between mb-8">
+                                    <h2 className="text-xl font-bold flex items-center gap-3">
+                                        <div className="w-1 h-6 bg-accent-red"></div>
+                                        {categories.find(c => c.id === activeCat)?.name}
+                                    </h2>
+                                    <span className="text-[10px] font-mono text-zinc-600 uppercase">Focus Protocol: ON</span>
+                                </div>
+
+                                <form onSubmit={addTask} className="mb-10 flex gap-2">
+                                    <input 
+                                        className="flex-1 bg-black/40 border border-zinc-800 p-4 text-sm outline-none focus:border-accent-red transition-all"
+                                        placeholder="إضافة مهمة جديدة لهذا القسم..."
+                                        value={taskInput}
+                                        onChange={e => setTaskInput(e.target.value)}
+                                    />
+                                    <button className="bg-accent-red text-black font-black px-8 uppercase text-xs hover:bg-red-700 transition-all">إدراج</button>
+                                </form>
+
+                                <div className="space-y-3 max-h-[600px] overflow-y-auto custom-scroll pr-2">
+                                    {filteredTasks.length === 0 ? (
+                                        <div className="py-20 text-center text-zinc-700 text-xs font-bold uppercase tracking-[0.3em]">
+                                            لا توجد مهام حالية في هذا القطاع
+                                        </div>
+                                    ) : (
+                                        filteredTasks.map(task => (
+                                            <div key={task.id} className={`flex items-center justify-between p-5 border transition-all ${task.completed ? 'bg-zinc-900/10 border-zinc-900 opacity-30 grayscale' : 'bg-zinc-900/40 border-zinc-800 hover:border-zinc-700'}`}>
+                                                <div className="flex items-center gap-4 flex-1">
+                                                    <div 
+                                                        onClick={() => toggleTask(task.id)}
+                                                        className={`w-6 h-6 border cursor-pointer flex items-center justify-center transition-all ${task.completed ? 'bg-accent-red border-accent-red shadow-lg shadow-red-900/20' : 'border-zinc-700'}`}
+                                                    >
+                                                        {task.completed && <Icons.Check />}
+                                                    </div>
+                                                    <span className={`text-sm md:text-base font-medium ${task.completed ? 'line-through' : 'text-zinc-200'}`}>{task.text}</span>
+                                                </div>
+                                                <button onClick={() => deleteTask(task.id)} className="text-zinc-800 hover:text-red-500 transition-colors px-2">
+                                                    <Icons.Trash />
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Side Stats */}
+                        <div className="lg:col-span-4 space-y-6">
+                            <section className="panel-glass p-6 border-l-2 border-accent-red">
+                                <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-6">تقرير القطاع الحالي</h3>
+                                <div className="space-y-6">
+                                    <div>
+                                        <div className="flex justify-between text-xs mb-2">
+                                            <span className="text-zinc-400">نسبة الإنجاز</span>
+                                            <span className="accent-red">
+                                                {filteredTasks.length ? Math.round((filteredTasks.filter(t => t.completed).length / filteredTasks.length) * 100) : 0}%
+                                            </span>
+                                        </div>
+                                        <div className="h-1 bg-zinc-900 overflow-hidden">
+                                            <div 
+                                                className="h-full bg-accent-red transition-all duration-700" 
+                                                style={{width: `${filteredTasks.length ? (filteredTasks.filter(t => t.completed).length / filteredTasks.length) * 100 : 0}%`}}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-black/50 p-4 border border-zinc-900">
+                                            <p className="text-[9px] text-zinc-600 uppercase font-bold mb-1">المهام الكلية</p>
+                                            <p className="text-xl font-black text-white">{filteredTasks.length}</p>
+                                        </div>
+                                        <div className="bg-black/50 p-4 border border-zinc-900">
+                                            <p className="text-[9px] text-zinc-600 uppercase font-bold mb-1">المتبقية</p>
+                                            <p className="text-xl font-black text-white">{filteredTasks.filter(t => !t.completed).length}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <div className="panel-glass p-8 text-zinc-600 text-xs italic leading-relaxed relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-white/5 -rotate-45 translate-x-8 -translate-y-8"></div>
+                                "في المواقف الصعبة، لا يحتاج المرء إلى الحظ، بل يحتاج إلى تركيز لا يتزعزع على النتيجة المرجوة."
+                                <br/><br/>
+                                — أيانوكوجي كيوتاكا
+                            </div>
+                        </div>
+                    </main>
+
+                    {/* Footer System Info */}
+                    <footer className="mt-12 flex justify-between items-center text-[9px] font-mono text-zinc-800 uppercase tracking-widest">
+                        <span>Terminal: {activeCat}</span>
+                        <span>Protocol: The Shadows are ready, My King. Arise</span>
+                        <span>Secure Auth: Enabled</span>
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
